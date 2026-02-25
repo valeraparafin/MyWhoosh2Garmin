@@ -22,7 +22,7 @@ The easiest way to use the monitor is through the automated scripts that stay ac
 2. A **myWhoosh2Garmin** shortcut will appear on your desktop.
 3. Pin it to your Taskbar for easy one-click access.
 4. See **[Windows Support](WINDOWS_SUPPORT.md)** for more details.
-
+<img width="957" height="1015" alt="How monitoring process looks on win11" src="https://github.com/user-attachments/assets/86c42444-b854-4d2d-9773-f3175f9f5dd6" />
 ### macOS
 
 1. Use the provided AppleScript monitor in the `apple-script` folder.
@@ -50,3 +50,4 @@ If you prefer to run the sync engine manually:
 - <a href="https://bitbucket.org/stagescycling/fit_tool/src/main/">Fit_tool</a> (FIT parsing)
 - **psutil** (Process monitoring)
 - **MD5** (Deduplication)
+
