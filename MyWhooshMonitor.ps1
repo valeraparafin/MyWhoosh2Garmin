@@ -7,7 +7,8 @@ if (Test-Path $configFile) {
     $config = Get-Content -Path $configFile | ConvertFrom-Json
     $mywhooshPath = $config.path
     $isUWP = $config.isUWP
-} else {
+}
+else {
     $mywhooshPath = $null
     $isUWP = $false
 }
@@ -32,7 +33,8 @@ if (-not $mywhooshPath -or (-not $isUWP -and -not (Test-Path $mywhooshPath))) {
         # Store only the PFN in path for consistency with the Python script folder discovery
         $mywhooshPath = $pfn
         $isUWP = $true
-    } else {
+    }
+    else {
 
 
 
@@ -87,7 +89,8 @@ if ($isUWP) {
     $aumid = "$mywhooshPath!$appId"
     Write-Host "Launching AUMID: $aumid"
     Start-Process "explorer.exe" -ArgumentList "shell:AppsFolder\$aumid"
-} else {
+}
+else {
 
 
     Write-Host "Found $myWhooshApp at $mywhooshPath"
@@ -109,25 +112,17 @@ while ($timeout -gt 0) {
 
 if (-not $started) {
     Write-Host "Warning: $myWhooshApp did not seem to start within 30 seconds."
-} else {
-    Write-Host "$myWhooshApp is running. Waiting for it to finish..."
-    # Wait for it to finish
-    while ($process = Get-Process -Name "*MyWhoosh*" -ErrorAction SilentlyContinue) {
-        Start-Sleep -Seconds 5
-    }
 }
 
-
-# Run the Python script
-Write-Host "$myWhooshApp has finished, running Python script..."
-
+# Run the Python script in monitor mode
+Write-Host "Running myWhoosh2Garmin Monitor..."
 # Check if python or python3 is available
 $pythonCmd = "python"
 if (-not (Get-Command $pythonCmd -ErrorAction SilentlyContinue)) {
     $pythonCmd = "python3"
 }
 
-& $pythonCmd myWhoosh2Garmin.py
+& $pythonCmd myWhoosh2Garmin.py --monitor
 
 Write-Host "`nDone! Press any key to close this window..." -ForegroundColor Gray
 

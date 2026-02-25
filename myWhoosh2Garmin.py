@@ -35,7 +35,7 @@ import importlib.util
 SCRIPT_DIR = Path(__file__).resolve().parent
 log_file_path = SCRIPT_DIR / "myWhoosh2Garmin.log"
 json_file_path = SCRIPT_DIR /  "backup_path.json"
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("myWhoosh2Garmin")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler(log_file_path)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -81,7 +81,7 @@ def install_package(package):
 
 def ensure_packages():
     """Ensure all required packages are installed."""
-    required_packages = ["garth", "fit_tool"]
+    required_packages = ["garth", "fit_tool", "psutil"]
 
     for package in required_packages:
         if not importlib.util.find_spec(package):
@@ -114,6 +114,9 @@ try:
     )
     from fit_tool.profile.messages.session_message import SessionMessage
     from fit_tool.profile.messages.lap_message import LapMessage
+    import psutil
+    import time
+    import argparse
 except ImportError as e:
     logger.error(f"Error importing modules: {e}")
     print(f"\nCRITICAL ERROR: {e}")
@@ -123,7 +126,7 @@ except ImportError as e:
 
 
 TOKENS_PATH = SCRIPT_DIR / '.garth'
-FILE_DIALOG_TITLE = "MyWhoosh2Garmin"
+FILE_DIALOG_TITLE = "myWhoosh2Garmin"
 # Fix for https://github.com/JayQueue/MyWhoosh2Garmin/issues/2
 MYWHOOSH_PREFIX_WINDOWS = "MyWhooshTechnologyService." 
 
@@ -411,43 +414,33 @@ def generate_new_filename(fit_file: Path) -> str:
     return f"{fit_file.stem}_{timestamp}.fit"
 
 
-def cleanup_and_save_fit_file(fitfile_location: Path) -> Path:
+def cleanup_and_save_fit_file(fit_file: Path) -> Path:
     """
-    Clean up the most recent .fit file in a directory and save it 
-    with a timestamped filename.
+    Clean up a specific .fit file and save it with a timestamped filename.
 
     Args:
-        fitfile_location (Path): The directory containing the .fit files.
+        fit_file (Path): The path to the input .fit file.
 
     Returns:
-        Path: The path to the newly saved and cleaned .fit file, 
-        or an empty Path if no .fit file is found or if the path is invalid.
+        Path: The path to the newly saved and cleaned .fit file,
+        or an empty Path if processing failed.
     """
-    if not fitfile_location.is_dir():
-        logger.info(f"The specified path is not a directory:"
-                    f"{fitfile_location}.")
+    if not fit_file or not fit_file.exists():
+        logger.error(f"File not found: {fit_file}")
         return Path()
 
-    logger.debug(f"Checking for .fit files in directory: {fitfile_location}.")
-    fit_file = get_most_recent_fit_file(fitfile_location)
-
-    if not fit_file:
-        logger.info("No .fit files found.")
-        return Path()
-
-    logger.debug(f"Found the most recent .fit file: {fit_file.name}.")
+    logger.debug(f"Processing .fit file: {fit_file.name}")
     new_filename = generate_new_filename(fit_file)
 
     if not BACKUP_FITFILE_LOCATION.exists():
-        logger.error(f"{BACKUP_FITFILE_LOCATION} does not exist."
-                     "Did you delete it?")
+        logger.error(f"{BACKUP_FITFILE_LOCATION} does not exist. Did you delete it?")
         return Path()
 
     new_file_path = BACKUP_FITFILE_LOCATION / new_filename
     logger.info(f"Cleaning up {new_file_path}.")
 
     try:
-        cleanup_fit_file(fit_file, new_file_path)  
+        cleanup_fit_file(fit_file, new_file_path)
         logger.info(f"Successfully cleaned {fit_file.name} "
                     f"and saved it as {new_file_path.name}.")
         return new_file_path
@@ -515,47 +508,88 @@ def save_processed_activity(file_hash: str):
         processed.append(file_hash)
         try:
             with open(PROCESSED_ACTIVITIES_FILE, 'w') as f:
-
                 json.dump(processed, f, indent=4)
             logger.info(f"Marked hash {file_hash} as processed.")
         except Exception as e:
             logger.error(f"Error saving processed activities: {e}")
 
 
-def main():
-    """
-    Main function to authenticate to Garmin, clean and save the FIT file, 
-    and upload it to Garmin.
+def is_mywhoosh_running() -> bool:
+    """Check if MyWhoosh process is active."""
+    for proc in psutil.process_iter(['name']):
+        try:
+            if "MyWhoosh" in proc.info['name']:
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return False
 
-    Returns:
-        None
-    """
-    authenticate_to_garmin()
+
+def process_activities():
+    """Find and process all new activity files."""
     if not FITFILE_LOCATION or not FITFILE_LOCATION.exists():
         logger.error("FIT file location not found. Please check your installation.")
-        print("\nERROR: Could not find MyWhoosh activity folder.")
-        sys.exit(1)
-        
-    # Check for duplicate
-    recent_fit = get_most_recent_fit_file(FITFILE_LOCATION)
-    if not recent_fit or not recent_fit.exists():
-        logger.info("No MyWhoosh activities found to process.")
-        print("\nInfo: No activities found.")
-        return
+        return 0
 
+    fit_files = list(FITFILE_LOCATION.glob("MyNewActivity-*.fit"))
+    if not fit_files:
+        return 0
+
+    fit_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     processed_list = load_processed_activities()
-    file_hash = calculate_file_hash(recent_fit)
-    
-    if file_hash and file_hash in processed_list:
-        logger.info(f"Activity {recent_fit.name} (hash: {file_hash}) has already been processed.")
-        print(f"\nActivity '{recent_fit.name}' has already been processed. Skipping...")
-        return
+    processed_count = 0
 
-    new_file_path = cleanup_and_save_fit_file(FITFILE_LOCATION)
-    if new_file_path:
-        success = upload_fit_file_to_garmin(new_file_path)
-        if success:
-            save_processed_activity(file_hash)
+    for fit_file in fit_files:
+        file_hash = calculate_file_hash(fit_file)
+        if not file_hash or file_hash in processed_list:
+            continue
+
+        print(f"\nProcessing new activity: {fit_file.name}")
+        new_file_path = cleanup_and_save_fit_file(fit_file)
+        if new_file_path:
+            success = upload_fit_file_to_garmin(new_file_path)
+            if success:
+                save_processed_activity(file_hash)
+                processed_list.append(file_hash)
+                processed_count += 1
+            else:
+                print(f"Failed to upload {fit_file.name} to Garmin.")
+        else:
+            print(f"Failed to process {fit_file.name}.")
+    
+    return processed_count
+
+
+def main():
+    """Main entry point with monitoring support."""
+    parser = argparse.ArgumentParser(description="MyWhoosh to Garmin Sync")
+    parser.add_argument("--monitor", action="store_true", help="Monitor for new activities while MyWhoosh is running")
+    args = parser.parse_args()
+
+    authenticate_to_garmin()
+
+    if args.monitor:
+        logger.info("Monitor Mode enabled. Waiting for MyWhoosh to close...")
+        print("\nMonitoring for new activities. Press Ctrl+C to stop.")
+        
+        while True:
+            new_count = process_activities()
+            if new_count > 0:
+                 print(f"Processed {new_count} new activit{'ies' if new_count > 1 else 'y'}.")
+            
+            if not is_mywhoosh_running():
+                logger.info("MyWhoosh is no longer running. Final sync and exit.")
+                print("\nMyWhoosh closed. Performing final sync...")
+                process_activities()
+                break
+            
+            time.sleep(60)
+    else:
+        count = process_activities()
+        if count > 0:
+            print(f"\nSuccessfully processed {count} new activit{'ies' if count > 1 else 'y'}.")
+        else:
+            print("\nNo new activities to upload.")
 
 
 

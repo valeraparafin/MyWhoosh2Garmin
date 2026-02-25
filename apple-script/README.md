@@ -1,5 +1,5 @@
 <h1>Apple Script to automate Garmin Upload</h1>
-<p>The app will run and constantly check (every 30 seconds) whether MyWhoosh is running. Once started, it will listen to My Whoosh being quit/exited. In case My Whoosh was exited/quit, it will run the myWhoosh2Garmin.py script that needs to be installed and setup previously.</p>
+<p>The app will launch the sync engine in <strong>Monitor Mode</strong>. It will automatically detect new workouts while you ride and upload them immediately without needing to restart the script or the game.</p>
 <h2>🛠️ Installation Steps:</h2>
 <ol>
   <li>Download MyWhoosh2Garmin-AS.scpt to your filesystem to a folder of your choosing.</li>
@@ -13,21 +13,26 @@ property pythonScriptPath : "/path/to/myWhoosh2Garmin.py"
 property appRunning : false
 
 on idle
-	if application targetApp is running then
-		set appRunning to true
-	else if appRunning then
-		set appRunning to false
-		performActionOnExit()
-	end if
-	return 30 -- Check every 30 seconds
+if application targetApp is running then
+if not appRunning then
+set appRunning to true
+-- Start the monitor mode
+performAction()
+end if
+else
+set appRunning to false
+end if
+return 60 -- Check every 60 seconds
 end idle
 
-on performActionOnExit()
-	do shell script "python3 " & quoted form of pythonScriptPath
-end performActionOnExit
+on performAction()
+-- Launch the Python script in monitor mode
+-- It will stay active until MyWhoosh is closed
+do shell script "python3 " & quoted form of pythonScriptPath & " --monitor > /dev/null 2>&1 &"
+end performAction
 
 on quit
-	continue quit
+continue quit
 end quit
 
 ```
@@ -40,5 +45,6 @@ end quit
   </li>
   <li>Before running the script, you need to grant the app full access to your hard drive. Otherwise, you will be prompted each time to allow access when the myWhoosh2Garmin is executed. Please search the web for a guide, given it slightly depends on your Mac OS version. See screenshot of my setup (I gave my App the My Whoosh icon): <img width="827" alt="Xnip2024-12-30_22-28-22" src="https://github.com/user-attachments/assets/c4004375-36ef-42c1-936f-99eba47639c6" />
   </li>
-  <li>Now you can run the App and start riding on My Whoosh. After you exit My Whoosh the Garmin upload script will be exectuded.</li>
+  <li>Now you can run the App and start riding on My Whoosh. All workouts will be synced in real-time.</li>
 </ol>
+```
