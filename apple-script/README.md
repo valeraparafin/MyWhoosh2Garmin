@@ -47,4 +47,3 @@ end quit
   </li>
   <li>Now you can run the App and start riding on My Whoosh. All workouts will be synced in real-time.</li>
 </ol>
-```
