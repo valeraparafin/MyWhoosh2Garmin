@@ -2,6 +2,7 @@
 """
 Script name: myWhoosh2Garmin.py
 Usage: "python3 myWhoosh2Garmin.py"
+
 Description:    Checks for MyNewActivity-<myWhooshVersion>.fit
                 Adds avg power and heartrade
                 Removes temperature
@@ -20,7 +21,9 @@ import subprocess
 import sys
 import logging
 import re
+import hashlib
 from typing import List
+
 import tkinter as tk
 from tkinter import filedialog
 from datetime import datetime
@@ -41,20 +44,11 @@ logger.addHandler(file_handler)
 
 
 INSTALLED_PACKAGES_FILE = SCRIPT_DIR / "installed_packages.json"
+PROCESSED_ACTIVITIES_FILE = SCRIPT_DIR / "processed_activities.json"
 
 
-def load_installed_packages():
-    """Load the set of installed packages from a JSON file."""
-    if INSTALLED_PACKAGES_FILE.exists():
-        with INSTALLED_PACKAGES_FILE.open("r") as f:
-            return set(json.load(f))
-    return set()
+# Removed load_installed_packages and save_installed_packages as they are redundant.
 
-
-def save_installed_packages(installed_packages):
-    """Save the set of installed packages to a JSON file."""
-    with INSTALLED_PACKAGES_FILE.open("w") as f:
-        json.dump(list(installed_packages), f)
 
 
 def get_pip_command():
@@ -86,29 +80,20 @@ def install_package(package):
 
 
 def ensure_packages():
-    """Ensure all required packages are installed and tracked."""
+    """Ensure all required packages are installed."""
     required_packages = ["garth", "fit_tool"]
-    installed_packages = load_installed_packages()
 
     for package in required_packages:
-        if package in installed_packages:
-            logger.info(f"Package {package} is already tracked as installed.")
-            continue
-
         if not importlib.util.find_spec(package):
-            logger.info(f"Package {package} not found."
-                        "Attempting to install...")
+            logger.info(f"Package {package} not found. Attempting to install...")
             install_package(package)
 
         try:
             __import__(package)
             logger.info(f"Successfully imported {package}.")
-            installed_packages.add(package)
         except ModuleNotFoundError:
-            logger.error(f"Failed to import {package} even "
-                         "after installation.")
+            logger.error(f"Failed to import {package} even after installation.")
 
-    save_installed_packages(installed_packages)
 
 
 ensure_packages()
@@ -131,6 +116,10 @@ try:
     from fit_tool.profile.messages.lap_message import LapMessage
 except ImportError as e:
     logger.error(f"Error importing modules: {e}")
+    print(f"\nCRITICAL ERROR: {e}")
+    print("Please make sure you have internet access and run the script again to install missing packages.")
+    sys.exit(1)
+
 
 
 TOKENS_PATH = SCRIPT_DIR / '.garth'
@@ -172,28 +161,55 @@ def get_fitfile_location() -> Path:
             sys.exit(1)
     elif os.name == "nt":  # Windows
         try:
+            # First, try to read the config file shared with the PowerShell script
+            config_path = SCRIPT_DIR / "mywhoosh_config.json"
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    shared_path = config.get('path')
+                    if shared_path and config.get('isUWP'):
+                        # shared_path is the PackageFamilyName
+                        target_base = Path.home() / "AppData" / "Local" / "Packages" / shared_path
+                        for subpath in ["LocalState", "LocalCache/Local"]:
+                            p = target_base / subpath / "MyWhoosh" / "Content" / "Data"
+                            if p.is_dir():
+                                return p
+
             base_path = Path.home() / "AppData" / "Local" / "Packages"
+            if not base_path.is_dir():
+                return Path()
+                
+            target_path = None
             for directory in base_path.iterdir():
                 if (directory.is_dir() and 
                         directory.name.startswith(MYWHOOSH_PREFIX_WINDOWS)):
-                    target_path = (
-                            directory
-                            / "LocalCache"
-                            / "Local"
-                            / "MyWhoosh"
-                            / "Content"
-                            / "Data"
-                )
-            if target_path.is_dir():
+                    # Try multiple potential paths for UWP app data
+                    for subpath in ["LocalState", "LocalCache/Local"]:
+                        potential_path = (
+                                directory
+                                / subpath
+                                / "MyWhoosh"
+                                / "Content"
+                                / "Data"
+                        )
+                        if potential_path.is_dir():
+                            target_path = potential_path
+                            break
+                    if target_path:
+                        break
+            
+            if target_path:
                 return target_path
             else:
-                raise FileNotFoundError(f"No valid MyWhoosh directory found in {target_path}")
+                logger.warning(f"No valid MyWhoosh directory found in {base_path}")
         except FileNotFoundError as e:
                 logger.error(str(e))
         except PermissionError as e:
                 logger.error(f"Permission denied: {e}")
         except Exception as e:
                 logger.error(f"Unexpected error: {e}")
+        
+        return Path() # Return empty path if not found
     else:
         logger.error("Unsupported OS")
         return Path()
@@ -448,17 +464,62 @@ def upload_fit_file_to_garmin(new_file_path: Path):
         new_file_path (Path): The path to the .fit file to upload.
 
     Returns:
-        None
+        bool: True if upload was successful or was a duplicate, False otherwise.
     """
     try:
         if new_file_path and new_file_path.exists():
             with open(new_file_path, "rb") as f:
                 uploaded = garth.client.upload(f)
                 logger.debug(uploaded)
+                return True
         else:
             logger.info(f"Invalid file path: {new_file_path}.")
+            return False
     except GarthHTTPError:
         logger.info("Duplicate activity found on Garmin Connect.")
+        return True
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        return False
+
+
+def calculate_file_hash(file_path: Path) -> str:
+    """Calculate the MD5 hash of a file."""
+    hash_md5 = hashlib.md5()
+    try:
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+    except Exception as e:
+        logger.error(f"Error calculating hash for {file_path}: {e}")
+        return ""
+
+
+def load_processed_activities() -> List[str]:
+
+    """Load the list of processed activity filenames."""
+    if PROCESSED_ACTIVITIES_FILE.exists():
+        try:
+            with open(PROCESSED_ACTIVITIES_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading processed activities: {e}")
+    return []
+
+
+def save_processed_activity(file_hash: str):
+    """Add a file hash to the processed list and save it."""
+    processed = load_processed_activities()
+    if file_hash not in processed:
+        processed.append(file_hash)
+        try:
+            with open(PROCESSED_ACTIVITIES_FILE, 'w') as f:
+
+                json.dump(processed, f, indent=4)
+            logger.info(f"Marked hash {file_hash} as processed.")
+        except Exception as e:
+            logger.error(f"Error saving processed activities: {e}")
 
 
 def main():
@@ -470,9 +531,32 @@ def main():
         None
     """
     authenticate_to_garmin()
+    if not FITFILE_LOCATION or not FITFILE_LOCATION.exists():
+        logger.error("FIT file location not found. Please check your installation.")
+        print("\nERROR: Could not find MyWhoosh activity folder.")
+        sys.exit(1)
+        
+    # Check for duplicate
+    recent_fit = get_most_recent_fit_file(FITFILE_LOCATION)
+    if not recent_fit or not recent_fit.exists():
+        logger.info("No MyWhoosh activities found to process.")
+        print("\nInfo: No activities found.")
+        return
+
+    processed_list = load_processed_activities()
+    file_hash = calculate_file_hash(recent_fit)
+    
+    if file_hash and file_hash in processed_list:
+        logger.info(f"Activity {recent_fit.name} (hash: {file_hash}) has already been processed.")
+        print(f"\nActivity '{recent_fit.name}' has already been processed. Skipping...")
+        return
+
     new_file_path = cleanup_and_save_fit_file(FITFILE_LOCATION)
     if new_file_path:
-        upload_fit_file_to_garmin(new_file_path)
+        success = upload_fit_file_to_garmin(new_file_path)
+        if success:
+            save_processed_activity(file_hash)
+
 
 
 if __name__ == "__main__":
