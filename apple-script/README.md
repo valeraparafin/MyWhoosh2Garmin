@@ -26,9 +26,9 @@ return 60 -- Check every 60 seconds
 end idle
 
 on performAction()
--- Launch the Python script in monitor mode
+-- Launch the Python script via Poetry in monitor mode
 -- It will stay active until MyWhoosh is closed
-do shell script "python3 " & quoted form of pythonScriptPath & " --monitor > /dev/null 2>&1 &"
+do shell script "poetry run python3 " & quoted form of pythonScriptPath & " --monitor > /dev/null 2>&1 &"
 end performAction
 
 on quit
@@ -47,3 +47,4 @@ end quit
   </li>
   <li>Now you can run the App and start riding on My Whoosh. All workouts will be synced in real-time.</li>
 </ol>
+```

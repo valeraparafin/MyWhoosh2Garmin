@@ -33,3 +33,11 @@ The monitor performs several cleanup tasks to improve the quality of the data in
 - **Missing Averages**: Forces recalculation of average Power and Heart Rate values if the game didn't populate them correctly.
 - **Data Stripping**: Removes internal or invalid data fields (like temperature) that can sometimes cause display issues in third-party platforms.
 - **Timestamping**: Reprocessed files are saved with a timestamped suffix to preserve the original data while ensuring each sync has a unique filename in the backup folder.
+
+## 5. Dependency Management
+
+The project uses **Poetry** for robust dependency resolution and environment isolation.
+
+- **Virtual Environment**: All runs are performed inside a dedicated virtual environment, preventing conflicts with global Python packages.
+- **Automated Setup**: The launch scripts (`MyWhooshMonitor.ps1` and macOS AppleScript) automatically detect missing dependencies or Poetry itself and handle the initialization.
+- **Reproducibility**: `pyproject.toml` and `poetry.lock` ensure that every installation uses the exact same versions of `garth`, `fit-tool`, and `psutil`.

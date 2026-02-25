@@ -114,15 +114,29 @@ if (-not $started) {
     Write-Host "Warning: $myWhooshApp did not seem to start within 30 seconds."
 }
 
-# Run the Python script in monitor mode
-Write-Host "Running myWhoosh2Garmin Monitor..."
-# Check if python or python3 is available
+# --- Poetry & Environment Auto-Manager ---
 $pythonCmd = "python"
-if (-not (Get-Command $pythonCmd -ErrorAction SilentlyContinue)) {
-    $pythonCmd = "python3"
+if (-not (Get-Command $pythonCmd -ErrorAction SilentlyContinue)) { $pythonCmd = "python3" }
+
+# 1. Check if Poetry is installed
+if (-not (Get-Command "poetry" -ErrorAction SilentlyContinue) -and -not ($pythonCmd -and (&$pythonCmd -m poetry --version 2>$null))) {
+    Write-Host "Poetry not found. Attempting to install..." -ForegroundColor Cyan
+    &$pythonCmd -m pip install poetry
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to install Poetry via pip. Please install it manually: https://python-poetry.org/docs/#installation" -ForegroundColor Red
+        exit 1
+    }
 }
 
-& $pythonCmd myWhoosh2Garmin.py --monitor
+# 2. Ensure dependencies are installed (virtual environment)
+if (-not (Test-Path "$PSScriptRoot\.venv") -and -not (Test-Path "$PSScriptRoot\poetry.lock")) {
+    Write-Host "Setting up virtual environment and installing dependencies..." -ForegroundColor Cyan
+    &$pythonCmd -m poetry install
+}
+
+# 3. Finally, run the sync engine
+Write-Host "Launching myWhoosh2Garmin Monitor..." -ForegroundColor Green
+&$pythonCmd -m poetry run python myWhoosh2Garmin.py --monitor
 
 Write-Host "`nDone! Press any key to close this window..." -ForegroundColor Gray
 

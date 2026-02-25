@@ -14,29 +14,31 @@
 
 <h2>🚀 Quick Start (Recommended)</h2>
 
-The easiest way to use the monitor is through the automated scripts that stay active while you ride.
+The easiest way to use the monitor is through the automated scripts that stay active while you ride. They will automatically handle **Poetry** installation and virtual environment setup.
 
 ### Windows
 
 1. Run `.\CreateShortcut.ps1` in PowerShell.
 2. A **myWhoosh2Garmin** shortcut will appear on your desktop.
 3. Pin it to your Taskbar for easy one-click access.
-4. See **[Windows Support](WINDOWS_SUPPORT.md)** for more details.
-<img width="957" height="1015" alt="How monitoring process looks on win11" src="https://github.com/user-attachments/assets/62c1b79b-31d5-4068-9e1a-9961580f620d" />
+4. The first run will automatically install Poetry and dependencies.
+5. See **[Windows Support](WINDOWS_SUPPORT.md)** for more details.
 
 ### macOS
 
 1. Use the provided AppleScript monitor in the `apple-script` folder.
-2. See **[macOS Support](apple-script/README.md)** for setup instructions.
+2. It will run the engine via `poetry run`.
+3. See **[macOS Support](apple-script/README.md)** for setup instructions.
 
 <h2>🛠️ Manual Usage</h2>
 
-If you prefer to run the sync engine manually:
+If you prefer to run the sync engine manually via Poetry:
 
-1. Install dependencies: `pip install garth fit_tool psutil`.
-2. Run the monitor directly:
+1. Install Poetry: `pip install poetry`.
+2. Initialize environment: `poetry install`.
+3. Run the monitor:
    ```bash
-   python myWhoosh2Garmin.py --monitor
+   poetry run python myWhoosh2Garmin.py --monitor
    ```
 
 <h2>ℹ️ Further Information</h2>

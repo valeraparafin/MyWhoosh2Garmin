@@ -17,7 +17,6 @@ Credits:        Garth by matin - for authenticating and uploading with
 """
 import os
 import json
-import subprocess
 import sys
 import logging
 import re
@@ -29,7 +28,6 @@ from tkinter import filedialog
 from datetime import datetime
 from getpass import getpass
 from pathlib import Path
-import importlib.util
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -43,85 +41,26 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
-INSTALLED_PACKAGES_FILE = SCRIPT_DIR / "installed_packages.json"
 PROCESSED_ACTIVITIES_FILE = SCRIPT_DIR / "processed_activities.json"
 
 
-# Removed load_installed_packages and save_installed_packages as they are redundant.
-
-
-
-def get_pip_command():
-    """Return the pip command if pip is available."""
-    try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        return [sys.executable, "-m", "pip"]
-    except subprocess.CalledProcessError:
-        return None
-
-
-def install_package(package):
-    """Install the specified package using pip."""
-    pip_command = get_pip_command()
-    if pip_command:
-        try:
-            logger.info(f"Installing missing package: {package}.")
-            subprocess.check_call(
-                pip_command + ["install", package]
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error installing {package}: {e}.")
-    else:
-        logger.debug("pip is not available. Unable to install packages.")
-
-
-def ensure_packages():
-    """Ensure all required packages are installed."""
-    required_packages = ["garth", "fit_tool", "psutil"]
-
-    for package in required_packages:
-        if not importlib.util.find_spec(package):
-            logger.info(f"Package {package} not found. Attempting to install...")
-            install_package(package)
-
-        try:
-            __import__(package)
-            logger.info(f"Successfully imported {package}.")
-        except ModuleNotFoundError:
-            logger.error(f"Failed to import {package} even after installation.")
-
-
-
-ensure_packages()
-
-
 # Imports
-try:
-    import garth
-    from garth.exc import GarthException, GarthHTTPError
-    from fit_tool.fit_file import FitFile
-    from fit_tool.fit_file_builder import FitFileBuilder
-    from fit_tool.profile.messages.file_creator_message import (
-        FileCreatorMessage
-    )
-    from fit_tool.profile.messages.record_message import (
-        RecordMessage,
-        RecordTemperatureField
-    )
-    from fit_tool.profile.messages.session_message import SessionMessage
-    from fit_tool.profile.messages.lap_message import LapMessage
-    import psutil
-    import time
-    import argparse
-except ImportError as e:
-    logger.error(f"Error importing modules: {e}")
-    print(f"\nCRITICAL ERROR: {e}")
-    print("Please make sure you have internet access and run the script again to install missing packages.")
-    sys.exit(1)
+import garth
+from garth.exc import GarthException, GarthHTTPError
+from fit_tool.fit_file import FitFile
+from fit_tool.fit_file_builder import FitFileBuilder
+from fit_tool.profile.messages.file_creator_message import (
+    FileCreatorMessage
+)
+from fit_tool.profile.messages.record_message import (
+    RecordMessage,
+    RecordTemperatureField
+)
+from fit_tool.profile.messages.session_message import SessionMessage
+from fit_tool.profile.messages.lap_message import LapMessage
+import psutil
+import time
+import argparse
 
 
 

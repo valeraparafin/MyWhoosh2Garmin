@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "mywhoosh2garmin"
+version = "2.1.0"
+description = "Automated activity uploader for MyWhoosh Indoor Cycling"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "myWhoosh2Garmin.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+garth = "^0.5.2"
+fit-tool = "^0.9.13"
+psutil = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
