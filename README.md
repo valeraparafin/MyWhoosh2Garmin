@@ -26,9 +26,10 @@ The easiest way to use the monitor is through the automated scripts that stay ac
 
 ### macOS
 
-1. Use the provided AppleScript monitor in the `apple-script` folder.
-2. It will run the engine via `poetry run`.
-3. See **[macOS Support](apple-script/README.md)** for setup instructions.
+1. Run `bash CreateMacShortcut.sh` in your terminal.
+2. A **myWhooshSync.app** will appear in the folder.
+3. **Drag it** to your Dock or Applications folder.
+4. See **[macOS Support](apple-script/README.md)** for setup instructions.
 
 <h2>🛠️ Manual Usage</h2>
 

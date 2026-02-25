@@ -1,50 +1,51 @@
-<h1>Apple Script to automate Garmin Upload</h1>
-<p>The app will launch the sync engine in <strong>Monitor Mode</strong>. It will automatically detect new workouts while you ride and upload them immediately without needing to restart the script or the game.</p>
-<h2>🛠️ Installation Steps:</h2>
-<ol>
-  <li>Download MyWhoosh2Garmin-AS.scpt to your filesystem to a folder of your choosing.</li>
-  <li>Go to the folder where you downloaded the script via Mac Finder.</li>
-  <li>Open the script in the Apple Script Editor and set the property <code>pythonScriptPath</code> to the location where you downloaded the 
-  <code>myWhoosh2Garmin.py</code> script.</li>
-  
-```
+<h1>macOS Monitor: one-click setup</h1>
+
+The easiest way to set up the sync engine on macOS is by using the automated shortcut creator. This will generate a native `.app` that stays active in the background and watches for MyWhoosh.
+
+## 🚀 One-Click Installation
+
+1. Open your terminal in the project directory.
+2. Run the shortcut creator:
+   ```bash
+   bash CreateMacShortcut.sh
+   ```
+3. A **myWhooshSync.app** will appear in the project folder.
+4. **Drag it** to your Applications folder or Dock for easy access.
+
+## 🛠️ Security Permissions
+
+Before the first run, you need to grant the app permission to watch for processes and access files:
+
+1. Open **System Settings** > **Privacy & Security**.
+2. Go to **Full Disk Access**.
+3. Click the **[+]** button and add `myWhooshSync.app`.
+4. Run the app once. It will stay open (visible in the Dock/Menu Bar) and wait for you to start riding!
+
+---
+
+### Manual Reference (AppleScript)
+
+If you wish to modify the behavior, the app is built from this logic:
+
+```applescript
 property targetApp : "MyWhoosh Indoor Cycling App"
-property pythonScriptPath : "/path/to/myWhoosh2Garmin.py"
 property appRunning : false
 
 on idle
-if application targetApp is running then
-if not appRunning then
-set appRunning to true
--- Start the monitor mode
-performAction()
-end if
-else
-set appRunning to false
-end if
-return 60 -- Check every 60 seconds
+	if application targetApp is running then
+		if not appRunning then
+			set appRunning to true
+			performAction()
+		end if
+	else
+		set appRunning to false
+	end if
+	return 60
 end idle
 
 on performAction()
--- Launch the Python script via Poetry in monitor mode
--- It will stay active until MyWhoosh is closed
-do shell script "poetry run python3 " & quoted form of pythonScriptPath & " --monitor > /dev/null 2>&1 &"
+	-- Launches macOSMonitor.sh inside the app bundle
+	set scriptPath to POSIX path of ((path to me as text) & "Contents:Resources:macOSMonitor.sh")
+	do shell script "bash " & quoted form of scriptPath & " > /dev/null 2>&1 &"
 end performAction
-
-on quit
-continue quit
-end quit
-
-```
-
-  <li>After changing the property file, export the file as an app.</li>
-  <li>Please select File Format <code>Application</code>.</li>
-  <li>Please select <code>Stay open after run handler</code> an export option.</li>
-  <li>Store the app at a location of your choice.
-	<img width="1100" alt="Xnip2024-12-30_22-16-55" src="https://github.com/user-attachments/assets/54fa1ab0-2ed3-46a0-808e-1420c29c7736" />
-  </li>
-  <li>Before running the script, you need to grant the app full access to your hard drive. Otherwise, you will be prompted each time to allow access when the myWhoosh2Garmin is executed. Please search the web for a guide, given it slightly depends on your Mac OS version. See screenshot of my setup (I gave my App the My Whoosh icon): <img width="827" alt="Xnip2024-12-30_22-28-22" src="https://github.com/user-attachments/assets/c4004375-36ef-42c1-936f-99eba47639c6" />
-  </li>
-  <li>Now you can run the App and start riding on My Whoosh. All workouts will be synced in real-time.</li>
-</ol>
 ```
