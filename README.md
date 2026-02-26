@@ -24,12 +24,9 @@ The easiest way to use the monitor is through the automated scripts that stay ac
 4. The first run will automatically install Poetry and dependencies.
 5. See **[Windows Support](WINDOWS_SUPPORT.md)** for more details.
 
-### macOS
-
-1. Run `bash CreateMacShortcut.sh` in your terminal.
-2. A **myWhooshSync.app** will appear in the folder.
-3. **Drag it** to your Dock or Applications folder.
-4. See **[macOS Support](apple-script/README.md)** for setup instructions.
+### macOS (Experimental)
+1. Ensure you have AppleScript support and the MyWhoosh app installed.
+2. Follow the simplified [QUICK_START_MAC.md](QUICK_START_MAC.md) guide.
 
 <h2>🛠️ Manual Usage</h2>
 

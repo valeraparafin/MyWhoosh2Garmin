@@ -3,3 +3,5 @@
 *.json
 *.lock
 *.fit
+.DS_Store
+*.app/

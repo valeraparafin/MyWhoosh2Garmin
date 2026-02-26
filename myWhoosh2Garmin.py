@@ -95,12 +95,10 @@ def get_fitfile_location() -> Path:
            / "Content"
            / "Data"
         )
-        if target_path.is_dir():
-            return target_path
-        else:
-            logger.error(f"Target path {target_path} does not exist. "
-                         "Check your MyWhoosh installation.")
-            sys.exit(1)
+        if not target_path.is_dir():
+            logger.warning(f"Data directory {target_path} not found. "
+                         "The monitor will wait for it to be created by MyWhoosh.")
+        return target_path
     elif os.name == "nt":  # Windows
         try:
             # First, try to read the config file shared with the PowerShell script
@@ -467,7 +465,8 @@ def is_mywhoosh_running() -> bool:
 def process_activities():
     """Find and process all new activity files."""
     if not FITFILE_LOCATION or not FITFILE_LOCATION.exists():
-        logger.error("FIT file location not found. Please check your installation.")
+        # Only log as debug/info to avoid flooding when monitoring
+        logger.debug("FIT file location not found yet. It will be checked again.")
         return 0
 
     fit_files = list(FITFILE_LOCATION.glob("MyNewActivity-*.fit"))
@@ -508,8 +507,17 @@ def main():
     authenticate_to_garmin()
 
     if args.monitor:
-        logger.info("Monitor Mode enabled. Waiting for MyWhoosh to close...")
-        print("\nMonitoring for new activities. Press Ctrl+C to stop.")
+        logger.info("Monitor Mode enabled.")
+        
+        # 1. Wait for MyWhoosh to start if not running
+        if not is_mywhoosh_running():
+            print("\nWaiting for MyWhoosh to start. You can launch the game now...")
+            logger.info("Waiting for MyWhoosh process...")
+            while not is_mywhoosh_running():
+                time.sleep(10)
+        
+        print("\nMyWhoosh detected! Monitoring for new activities. Press Ctrl+C to stop.")
+        logger.info("MyWhoosh is running. Starting sync loop.")
         
         while True:
             new_count = process_activities()
