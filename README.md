@@ -23,6 +23,8 @@ The easiest way to use the monitor is through the automated scripts that stay ac
 3. Pin it to your Taskbar for easy one-click access.
 4. The first run will automatically install Poetry and dependencies.
 5. See **[Windows Support](WINDOWS_SUPPORT.md)** for more details.
+   <img width="957" height="514" alt="MyWhoosh monitoring Win11 success" src="https://github.com/user-attachments/assets/77539a43-dc63-4c5e-bc02-8b03e469afb6" />
+
 
 ### macOS (Experimental)
 1. Ensure you have AppleScript support and the MyWhoosh app installed.
