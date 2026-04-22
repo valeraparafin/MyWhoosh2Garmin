@@ -129,7 +129,7 @@ if (-not (Get-Command "poetry" -ErrorAction SilentlyContinue) -and -not ($python
 }
 
 # 2. Ensure dependencies are installed (virtual environment)
-if (-not (Test-Path "$PSScriptRoot\.venv") -and -not (Test-Path "$PSScriptRoot\poetry.lock")) {
+if (-not (Test-Path "$PSScriptRoot\.venv")) {
     Write-Host "Setting up virtual environment and installing dependencies..." -ForegroundColor Cyan
     &$pythonCmd -m poetry install
 }

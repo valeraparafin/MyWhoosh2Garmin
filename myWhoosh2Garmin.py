@@ -175,19 +175,18 @@ def get_backup_path(json_file=json_file_path) -> Path:
             logger.info(f"Using backup path from JSON: {backup_path}.")
             return Path(backup_path)
         else:
-            logger.error("Invalid backup path stored in JSON.")
-            sys.exit(1)
-    else:
-        root = tk.Tk()
-        root.withdraw() 
-        backup_path = filedialog.askdirectory(title=f"Select {FILE_DIALOG_TITLE} "
-                                              "Directory")
-        if not backup_path:
-            logger.info("No directory selected, exiting.")
-            return Path()
-        with open(json_file, 'w') as f:
-            json.dump({'backup_path': backup_path}, f)
-        logger.info(f"Backup path saved to {json_file}.")
+            logger.warning("Invalid backup path stored in JSON. Prompting for a new path.")
+
+    root = tk.Tk()
+    root.withdraw() 
+    backup_path = filedialog.askdirectory(title=f"Select {FILE_DIALOG_TITLE} Directory")
+    if not backup_path:
+        logger.info("No directory selected, exiting.")
+        sys.exit(1)
+        
+    with open(json_file, 'w') as f:
+        json.dump({'backup_path': backup_path}, f)
+    logger.info(f"Backup path saved to {json_file}.")
     return Path(backup_path)
 
 FITFILE_LOCATION = get_fitfile_location()
